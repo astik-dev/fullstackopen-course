@@ -1,4 +1,6 @@
 const express = require("express");
+const morgan = require("morgan");
+
 const app = express();
 
 const requestLogger = (request, response, next) => {
@@ -9,8 +11,14 @@ const requestLogger = (request, response, next) => {
     next();
 }
 
+
+
 app.use(express.json());
-app.use(requestLogger);
+//app.use(requestLogger);
+
+morgan.token("body", request => JSON.stringify(request.body));
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'));
+
 
 let notes = [
     {
