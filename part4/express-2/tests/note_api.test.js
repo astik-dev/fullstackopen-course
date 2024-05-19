@@ -8,11 +8,7 @@ const helper = require("./test_helper");
 
 beforeEach(async () => {
     await Note.deleteMany({});
-
-    for (let note of helper.initialNotes) {
-        const noteObject = new Note(note);
-        await noteObject.save();
-    }
+    await Note.insertMany(helper.initialNotes);
 });
 
 const api = supertest(app);
