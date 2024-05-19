@@ -1,5 +1,6 @@
 const notesRouter = require('express').Router();
 const Note = require("../models/note");
+const User = require('../models/user');
 
 
 notesRouter.get("/", async (request, response) => {
@@ -35,12 +36,22 @@ notesRouter.post("/", async (request, response, next) => {
     
     const body = request.body;
 
+    if (!body.userId) {
+        return response.status(400).json({ error: "userId is required" });
+    }
+
+    const user = await User.findById(body.userId);
+
     const note = new Note({
         content: body.content,
         important: Boolean(body.important) || false,
+        user: user.id,
     });
 
     const savedNote = await note.save();
+    user.notes.push(savedNote._id);
+    await user.save();
+
     response.status(201).json(savedNote);
 });
 
