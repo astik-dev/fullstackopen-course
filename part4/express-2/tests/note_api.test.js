@@ -1,4 +1,4 @@
-const { test, after, beforeEach, describe } = require("node:test");
+const { test, after, before, beforeEach, describe } = require("node:test");
 const assert = require("node:assert");
 const mongoose = require("mongoose");
 const supertest = require("supertest");
@@ -11,10 +11,43 @@ const helper = require("./test_helper");
 const api = supertest(app);
 
 describe("when there is initially some notes saved", () => {
+
+    let token;
+    let userId;
+
+    before(async () => {
+        await User.deleteMany({});
+
+        const username = "root";
+        const password = "sekret";
     
+        const passwordHash = await bcrypt.hash(password, 10);
+        const user = new User({ username, passwordHash });
+
+        userId = user._id;
+
+        await user.save();
+
+        const result = await api
+            .post("/api/login")
+            .send({ username, password })
+            .expect(200)
+            .expect('Content-Type', /application\/json/);
+
+        token = result.body.token;
+    });
+
     beforeEach(async () => {
         await Note.deleteMany({});
-        await Note.insertMany(helper.initialNotes);
+        await User.updateOne({ _id: userId }, { $set: { notes: [] } });
+        for (const initialNote of helper.initialNotes) {
+            await api
+                .post("/api/notes")
+                .set("Authorization", `Bearer ${token}`)
+                .send(initialNote)
+                .expect(201)
+                .expect("Content-Type", /application\/json/);
+        }
     });
 
     test("notes are returned as json", async () => {
@@ -40,13 +73,13 @@ describe("when there is initially some notes saved", () => {
         test("succeeds with a valid id", async () => {
             const notesAtStart = await helper.notesInDb();
         
-            const noteToView = notesAtStart[0];
+            const noteToView = {...notesAtStart[0], user: notesAtStart[0].user.toString()};
         
             const resultNote = await api
                 .get(`/api/notes/${noteToView.id}`)
                 .expect(200)
                 .expect("Content-Type", /application\/json/);
-        
+
             assert.deepStrictEqual(resultNote.body, noteToView);
         });
 
@@ -74,19 +107,14 @@ describe("when there is initially some notes saved", () => {
 
         test("succeeds with valid data", async () => {
 
-            await User.deleteMany({});
-            const passwordHash = await bcrypt.hash('sekret', 10);
-            const user = new User({ username: 'root', passwordHash });
-            await user.save();
-
             const newNote = {
                 content: "async/await simplifies making async calls",
                 important: true,
-                userId: user.id,
             };
         
             await api
                 .post("/api/notes")
+                .set("Authorization", `Bearer ${token}`)
                 .send(newNote)
                 .expect(201)
                 .expect("Content-Type", /application\/json/);
@@ -107,6 +135,7 @@ describe("when there is initially some notes saved", () => {
         
             await api
                 .post("/api/notes")
+                .set("Authorization", `Bearer ${token}`)
                 .send(newNote)
                 .expect(400)
             
@@ -126,6 +155,7 @@ describe("when there is initially some notes saved", () => {
         
             await api
                 .delete(`/api/notes/${noteToDelete.id}`)
+                .set("Authorization", `Bearer ${token}`)
                 .expect(204);
         
             const notesAtEnd = await helper.notesInDb();

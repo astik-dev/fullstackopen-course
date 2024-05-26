@@ -1,6 +1,6 @@
 const notesRouter = require('express').Router();
 const Note = require("../models/note");
-const User = require('../models/user');
+const middleware = require('../utils/middleware');
 
 
 notesRouter.get("/", async (request, response) => {
@@ -8,7 +8,7 @@ notesRouter.get("/", async (request, response) => {
     response.json(notes);
 });
 
-notesRouter.get("/:id", async (request, response, next) => {
+notesRouter.get("/:id", async (request, response) => {
     const note = await Note.findById(request.params.id);
     if (note) {
         response.json(note);
@@ -17,12 +17,12 @@ notesRouter.get("/:id", async (request, response, next) => {
     }
 });
 
-notesRouter.delete("/:id", async (request, response, next) => {
+notesRouter.delete("/:id", middleware.userExtractor, middleware.checkNoteOwnership, async (request, response) => {
     await Note.findByIdAndDelete(request.params.id);
     response.status(204).end();
 });
 
-notesRouter.put("/:id", async (request, response, next) => {
+notesRouter.put("/:id", middleware.userExtractor, middleware.checkNoteOwnership, async (request, response) => {
     const {content, important} = request.body;
     const updatedNote = await Note.findByIdAndUpdate(
         request.params.id,
@@ -32,15 +32,10 @@ notesRouter.put("/:id", async (request, response, next) => {
     response.json(updatedNote);
 });
 
-notesRouter.post("/", async (request, response, next) => {
+notesRouter.post("/", middleware.userExtractor, async (request, response) => {
     
     const body = request.body;
-
-    if (!body.userId) {
-        return response.status(400).json({ error: "userId is required" });
-    }
-
-    const user = await User.findById(body.userId);
+    const user = request.user;
 
     const note = new Note({
         content: body.content,
