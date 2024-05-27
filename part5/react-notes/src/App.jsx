@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-
-const baseUrl = '/api/notes';
+import noteService from "./services/notes";
 
 const newNoteInitialValue = {
     content: "",
@@ -13,28 +12,19 @@ function App() {
     const [newNote, setNewNote] = useState(newNoteInitialValue);
 
     useEffect(() => {
-        fetch(baseUrl)
-            .then(res => res.json())
-            .then(data => {
-                setNotes(data);
+        noteService
+            .getAll()
+            .then(initialNotes => {
+                setNotes(initialNotes);
                 setNotesLoaded(true);
-            });
+            })
     }, []);
 
-    function saveNewNote() {
-        if (newNote.content == "") return;
-
-        fetch(baseUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                ...newNote,
-                id: notes.length + 1,
-            }),
-        })
-            .then(res => res.json())
-            .then(data => {
-                setNotes(notes.concat(data));
+    function createNote() {
+        noteService
+            .create({...newNote})
+            .then(returnedNote => {
+                setNotes(notes.concat(returnedNote));
                 setNewNote(newNoteInitialValue);
             });
     }
@@ -47,15 +37,13 @@ function App() {
                 <ul>
                     {notes.map(note =>
                         <li key={note.id}>
-                            {note.id} - {note.content}
+                            {note.content}
                         </li>
                     )}
                 </ul>
                 :
                 <p>Loading...</p>
             }
-
-            
 
             <input
                 type="text"
@@ -68,7 +56,7 @@ function App() {
                 checked={newNote.important}
                 onChange={e => setNewNote({...newNote, important: e.target.checked})}
             />
-            <button onClick={saveNewNote}>Save</button>
+            <button onClick={createNote}>Save</button>
 
         </div>
     )
