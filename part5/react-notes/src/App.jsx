@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import noteService from "./services/notes";
-
-const newNoteInitialValue = {
-    content: "",
-    important: false,
-};
+import LoginForm from "./components/LoginForm";
+import loginService from "./services/login";
+import Notification from "./components/Notification";
+import NoteForm from "./components/NoteForm";
 
 function App() {
     const [notes, setNotes] = useState([]);
     const [notesLoaded, setNotesLoaded] = useState(false);
-    const [newNote, setNewNote] = useState(newNoteInitialValue);
+    const [errorMessage, setErrorMessage] = useState(null);
+    const [user, setUser] = useState(null);
 
     useEffect(() => {
         noteService
@@ -20,17 +20,68 @@ function App() {
             })
     }, []);
 
-    function createNote() {
-        noteService
+    useEffect(() => {
+        const loggedUserJSON = window.localStorage.getItem("loggedNoteappUser");
+        if (loggedUserJSON) {
+            const loggedUser = JSON.parse(loggedUserJSON);
+            setUser(loggedUser);
+            noteService.setToken(loggedUser.token);
+        }
+    }, []);
+
+    function createNote(event, newNote) {
+        event.preventDefault();
+
+        return noteService
             .create({...newNote})
             .then(returnedNote => {
                 setNotes(notes.concat(returnedNote));
-                setNewNote(newNoteInitialValue);
             });
+    }
+
+    async function handleLogin(event, username, password) {
+        event.preventDefault();
+        
+        try {
+            const user = await loginService.login({username, password});
+            setUser(user);
+            window.localStorage.setItem(
+                "loggedNoteappUser", JSON.stringify(user)
+            );
+            noteService.setToken(user.token);
+        } catch (exception) {
+            setErrorMessage("Wrong credentials");
+            setTimeout(() => {
+                setErrorMessage(null);
+            }, 5000);
+        }
+    }
+
+    function handleLogout() {
+        window.localStorage.removeItem("loggedNoteappUser");
+        setUser(null);
+        noteService.setToken(null);
     }
 
     return (
         <div>
+
+            <Notification message={errorMessage} />
+
+            {user == null ?
+                <LoginForm {...{handleLogin}} /> :
+                <div>
+                    <p>
+                        {user.username} logged-in
+                        <button
+                            onClick={handleLogout}
+                        >
+                            Log out
+                        </button>
+                    </p>
+                    <NoteForm {...{createNote}} />
+                </div>
+            }
 
             {notesLoaded
                 ?
@@ -44,19 +95,6 @@ function App() {
                 :
                 <p>Loading...</p>
             }
-
-            <input
-                type="text"
-                value={newNote.content}
-                onChange={e => setNewNote({...newNote, content: e.target.value})}
-            />
-            <span>Important:</span>
-            <input
-                type="checkbox"
-                checked={newNote.important}
-                onChange={e => setNewNote({...newNote, important: e.target.checked})}
-            />
-            <button onClick={createNote}>Save</button>
 
         </div>
     )
