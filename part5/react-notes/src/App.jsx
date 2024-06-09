@@ -4,6 +4,7 @@ import LoginForm from "./components/LoginForm";
 import loginService from "./services/login";
 import Notification from "./components/Notification";
 import NoteForm from "./components/NoteForm";
+import Togglable from "./components/Togglable";
 
 function App() {
     const [notes, setNotes] = useState([]);
@@ -68,8 +69,12 @@ function App() {
 
             <Notification message={errorMessage} />
 
-            {user == null ?
-                <LoginForm {...{handleLogin}} /> :
+            {user == null
+                ?
+                <Togglable buttonLabel="login">
+                    <LoginForm {...{handleLogin}} />
+                </Togglable>
+                :
                 <div>
                     <p>
                         {user.username} logged-in
@@ -79,7 +84,9 @@ function App() {
                             Log out
                         </button>
                     </p>
-                    <NoteForm {...{createNote}} />
+                    <Togglable buttonLabel="new note">
+                        <NoteForm {...{createNote}} />
+                    </Togglable>
                 </div>
             }
 
