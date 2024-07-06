@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PropTypes from "prop-types";
 
 const newNoteInitialValue = {
     content: "",
@@ -27,6 +28,10 @@ const NoteForm = ({ createNote }) => {
             <button type="submit">Save</button>
         </form>
     )
+};
+
+NoteForm.propTypes = {
+    createNote: PropTypes.func.isRequired,
 };
 
 export default NoteForm;
